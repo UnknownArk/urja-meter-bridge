@@ -1,0 +1,16 @@
+# Engineering Reflection
+
+### 1. What assumptions did you make?
+I assumed that the internal portal's meter registry (403 meters) is relatively static, whereas consumption telemetry is time-sensitive. Because grid topology and meter nameplates do not change every second, caching the full catalog in memory on service startup (with background refresh) is drastically more defensible than making 400+ sequential HTTP requests to the legacy portal on every user query. For telemetry, I assumed that operations teams require real-time readings, so `/consumption` queries are proxied on-demand with type normalization rather than eagerly cached.
+
+### 2. Which part was the most difficult, and how did you get unstuck?
+The most challenging part was reverse-engineering the authentication and bulk export constraints. Initially, direct programmatic POST requests to `/login` were rejected with an HTTP 403 `Cross-site POST form submissions are forbidden`. By inspecting the browser's raw request headers, I identified that SvelteKit's built-in CSRF defense checks the `Origin` and `Referer` headers. Later, attempting to call `/portal/export` produced a `401 signature_invalid`. To get unstuck, I searched the frontend bundle chunks (`nodes/4.2Bgc2kUI.js`) and discovered the dynamic secret retrieval from `/portal/keys` and the HMAC-SHA256 signature payload. Replicating that handshake in Python enabled single-request catalog ingestion.
+
+### 3. If you had another day, what would you improve?
+With an additional day, I would focus on three practical things: First, move the credentials and portal URLs entirely into a `.env` file with environment variable overrides rather than code defaults. Second, add a simple periodic background task (e.g. every 30 minutes) to re-sync the meter catalog so the API automatically catches status changes without needing a server restart. Third, add query date-filtering (`?from=` and `?to=`) on the `/consumption` endpoint so downstream data analysts can fetch specific time slices rather than always receiving the full 7-day payload.
+
+### 4. What mistake did you make while solving this?
+Early in the exploration, I almost fell into the trap of writing an HTML table scraper using BeautifulSoup, assuming that "no API" meant the portal was server-rendered legacy PHP or ASP.NET. After logging in and noticing SvelteKit artifacts in the network panel, I realized that scraping HTML was an anti-pattern when clean JSON endpoints (`/portal/meters/search`, `/portal/meters/{id}/energy`) were already powering the client. Pivoting to reverse-engineer the internal JSON protocol saved significant complexity and eliminated brittle DOM parsing.
+
+### 5. If you were reviewing your own submission, what would you criticise?
+I would point out that relying on the HMAC-SHA256 signature on `/portal/export` creates an implicit coupling to an undocumented internal endpoint. If the utility's frontend team changes the signature format or key endpoint path, the bulk sync would fail. While I mitigated this by implementing an automatic fallback to the standard paginated `/portal/meters/search` endpoint, in a high-stakes production environment I would implement circuit breakers and alert triggers to notify the engineering team whenever the upstream protocol deviates from the documented contract.

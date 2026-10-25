@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urja Meter Bridge — Grid Telemetry Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --bg-card: #0d1322;
+      --bg-card-hover: #121a2d;
+      --bg-elevated: #162035;
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-gold: rgba(245, 158, 11, 0.28);
+      --border-gold-subtle: rgba(245, 158, 11, 0.12);
+      
+      --gold-primary: #f59e0b;
+      --gold-light: #fbbf24;
+      --gold-dark: #b45309;
+      --gold-glow: rgba(245, 158, 11, 0.25);
+      
+      --cyan-electric: #38bdf8;
+      --cyan-glow: rgba(56, 189, 248, 0.25);
+      --indigo-accent: #6366f1;
+      
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --crimson: #ef4444;
+      --amber: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.18) 0%, transparent 60%),
+        radial-gradient(circle at 10% 30%, rgba(245, 158, 11, 0.05) 0%, transparent 40%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* TOP NAVIGATION */
+    header {
+      background: rgba(13, 19, 34, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-crest {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      box-shadow: 0 0 16px var(--gold-glow), inset 0 1px 1px rgba(255,255,255,0.4);
+      color: #07090e;
+    }
+
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-pill {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--gold-light);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      -webkit-text-fill-color: initial;
+    }
+
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: -0.01em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .pill-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .pill-pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulseGlow 2s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.6; }
+    }
+
+    .btn-nav {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      padding: 0.38rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .btn-nav:hover {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--gold-light);
+      border-color: var(--border-gold);
+    }
+
+    /* MAIN WORKSPACE LAYOUT */
+    .app-workspace {
+      flex: 1;
+      padding: 1.25rem 1.75rem;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 1.25rem;
+      max-width: 1720px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1180px) {
+      .app-workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* CARDS & PANELS */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), transparent);
+    }
+
+    .panel-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .panel-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* DIRECTORY / SEARCH FILTER BAR */
+    .filter-section {
+      padding: 1rem 1.25rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .search-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.6rem 0.85rem 0.6rem 2.2rem;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 0 2px var(--gold-glow);
+      background: #0c121e;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+
+    select {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--gold-primary);
+      color: var(--text-primary);
+    }
+
+    /* TABLE */
+    .table-viewport {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 580px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #0c121e;
+      padding: 0.65rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      z-index: 10;
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      transition: background 0.1s ease;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      position: relative;
+    }
+
+    tbody tr:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    tbody tr.active-row {
+      background: rgba(245, 158, 11, 0.08);
+      color: var(--text-primary);
+    }
+
+    tbody tr.active-row::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--gold-primary);
+      box-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    /* STATUS BADGES */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.15rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .status-installed {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .status-faulty {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-decommissioned {
+      background: rgba(148, 163, 184, 0.12);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    /* PAGINATION BAR */
+    .pagination-footer {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .btn-page {
+      background: #090d16;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.32rem 0.7rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .btn-page:hover:not(:disabled) {
+      border-color: var(--gold-primary);
+      color: var(--gold-light);
+      background: #0f172a;
+    }
+
+    .btn-page:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* RIGHT PANEL: INSPECTOR & WORKBENCH */
+    .inspector-content {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      gap: 0.75rem;
+      height: 100%;
+    }
+
+    /* NAMEPLATE METRIC TILES */
+    .specs-ribbon {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.65rem;
+    }
+
+    @media (max-width: 900px) {
+      .specs-ribbon {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .spec-tile {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+    }
+
+    .spec-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .spec-value {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* HIERARCHY TOPOLOGY BREADCRUMB */
+    .topology-breadcrumb {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-gold-subtle);
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+    }
+
+    .topo-tag {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .topo-tag.highlight {
+      color: var(--gold-light);
+      background: rgba(245, 158, 11, 0.1);
+      border-color: var(--border-gold);
+    }
+
+    .topo-sep {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    /* VISUALIZATION SPLIT (MAP & CHART) */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 1300px) {
+      .telemetry-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-subpanel {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .subpanel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    #map-frame {
+      height: 270px;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      background: #06080e;
+    }
+
+    .chart-box {
+      height: 270px;
+      width: 100%;
+      position: relative;
+    }
+
+    /* KPI METRICS STRIP */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+
+    .kpi-tile {
+      background: linear-gradient(145deg, rgba(13, 19, 34, 0.8) 0%, rgba(9, 13, 22, 0.95) 100%);
+      border: 1px solid var(--border-gold-subtle);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-tile::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+      opacity: 0.6;
+    }
+
+    .kpi-name {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .kpi-metric {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--gold-light);
+    }
+
+    /* CUSTOM MAP RADAR PIN */
+    .radar-pin {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--gold-primary);
+      box-shadow: 0 0 12px var(--gold-primary);
+      border: 2px solid #ffffff;
+      animation: ping 1.5s infinite;
+    }
+
+    /* LEAFLET POPUP OVERRIDES */
+    .leaflet-popup-content-wrapper {
+      background: #0d1322 !important;
+      border: 1px solid var(--border-gold) !important;
+      color: var(--text-primary) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      padding: 2px !important;
+    }
+    .leaflet-popup-tip {
+      background: #0d1322 !important;
+      border-color: var(--border-gold) !important;
+    }
+    .leaflet-popup-content {
+      font-size: 0.8rem !important;
+      line-height: 1.4 !important;
+      margin: 8px 12px !important;
+    }
+    .leaflet-control-attribution {
+      background: rgba(13, 19, 34, 0.75) !important;
+      color: #64748b !important;
+      font-size: 0.65rem !important;
+    }
+    .leaflet-control-attribution a {
+      color: #94a3b8 !important;
+      text-decoration: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-crest">⚡</div>
+      <div>
+        <div class="brand-title">
+          Urja Meter Bridge
+          <span class="brand-pill">AMI Gateway</span>
+        </div>
+        <div class="brand-sub">Grid Telemetry Supervisory Console · Jaipur Operations Circle</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div id="service-status" class="pill-indicator">
+        <span class="pill-pulse"></span> Synchronizing...
+      </div>
+      <span class="mono" style="font-size: 0.8rem; color: var(--text-secondary);">
+        Fleet: <strong id="total-meters-count" style="color: var(--text-primary);">-</strong> meters
+      </span>
+      <a href="/docs" target="_blank" class="btn-nav">Swagger Docs ↗</a>
+      <a href="/openapi.json" target="_blank" class="btn-nav">OpenAPI ↗</a>
+      <a href="https://github.com/UnknownArk/urja-meter-bridge" target="_blank" class="btn-nav">GitHub ↗</a>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <main class="app-workspace">
+
+    <!-- LEFT COLUMN: METER REGISTRY -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>⚡ Smart Meter Registry</span>
+        </div>
+        <span id="page-summary" class="mono" style="font-size: 0.75rem; color: var(--text-muted);">-</span>
+      </div>
+
+      <!-- FILTER CONTROLS -->
+      <div class="filter-section">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="filter-search" class="search-input" placeholder="Search Meter ID, Serial, Make..." />
+        </div>
+        <div class="filter-grid">
+          <select id="filter-status">
+            <option value="">Status: All</option>
+            <option value="Installed">Installed</option>
+            <option value="Faulty">Faulty</option>
+            <option value="Decommissioned">Decommissioned</option>
+          </select>
+          <select id="filter-make">
+            <option value="">Make: All</option>
+            <option value="Genus">Genus</option>
+            <option value="Secure">Secure</option>
+            <option value="HPL">HPL</option>
+            <option value="L&T">L&T</option>
+            <option value="Allied">Allied</option>
+          </select>
+          <select id="filter-dt">
+            <option value="">DT: All</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-viewport">
+        <table>
+          <thead>
+            <tr>
+              <th>Meter ID</th>
+              <th>Serial</th>
+              <th>Make</th>
+              <th>Status</th>
+              <th>DT Node</th>
+            </tr>
+          </thead>
+          <tbody id="meters-table-body">
+            <tr><td colspan="5" style="text-align:center; padding: 2.5rem; color: var(--text-muted);">Loading registry...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION -->
+      <div class="pagination-footer">
+        <button id="btn-prev" class="btn-page" disabled>&larr; Prev</button>
+        <span id="page-indicator" class="mono">Page 1 of 1</span>
+        <button id="btn-next" class="btn-page" disabled>Next &rarr;</button>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: METER INSPECTOR WORKBENCH -->
+    <section class="panel">
+      <div id="inspector-placeholder" class="empty-state">
+        <div style="font-size: 2.8rem; filter: grayscale(1) opacity(0.35);">⚡</div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">Select a Smart Meter to Inspect</div>
+        <div style="max-width: 380px; font-size: 0.8rem; color: var(--text-muted);">
+          Inspect verified nameplate attributes, spatial coordinates on the Jaipur network, 7-level grid topology, and 7-day interval telemetry.
+        </div>
+      </div>
+
+      <div id="inspector-content" class="inspector-content" style="display: none;">
+        
+        <!-- NAMEPLATE SPECIFICATION STRIP -->
+        <div class="specs-ribbon">
+          <div class="spec-tile">
+            <div class="spec-label">Meter ID</div>
+            <div class="spec-value mono" id="spec-id" style="color: var(--cyan-electric);">-</div>
+          </div>
+          <div class="spec-tile">
+            <div class="spec-label">Serial Number</div>
+            <div class="spec-value mono" id="spec-serial">-</div>
+          </div>
+          <div class="spec-tile">
+            <div class="spec-label">Manufacturer</div>
+            <div class="spec-value" id="spec-make">-</div>
+          </div>
+          <div class="spec-tile">
+            <div class="spec-label">Phase Rating</div>
+            <div class="spec-value" id="spec-phase">-</div>
+          </div>
+          <div class="spec-tile">
+            <div class="spec-label">Operational State</div>
+            <div class="spec-value" id="spec-status">-</div>
+          </div>
+          <div class="spec-tile">
+            <div class="spec-label">Wiring / Install</div>
+            <div class="spec-value" id="spec-type">-</div>
+          </div>
+        </div>
+
+        <!-- TOPOLOGY BREADCRUMB -->
+        <div class="topology-breadcrumb" id="topology-breadcrumb">
+          <span class="topo-tag" id="crumb-zone">Jaipur Zone</span>
+          <span class="topo-sep">›</span>
+          <span class="topo-tag" id="crumb-circle">Circle</span>
+          <span class="topo-sep">›</span>
+          <span class="topo-tag" id="crumb-division">Division</span>
+          <span class="topo-sep">›</span>
+          <span class="topo-tag" id="crumb-feeder">Feeder</span>
+          <span class="topo-sep">›</span>
+          <span class="topo-tag highlight mono" id="crumb-dt">Transformer Node</span>
+        </div>
+
+        <!-- SPLIT VISUALIZATION: MAP & TELEMETRY -->
+        <div class="telemetry-grid">
+          
+          <!-- SPATIAL MAP -->
+          <div class="card-subpanel">
+            <div class="subpanel-head">
+              <span style="color: var(--text-primary);">📍 Jaipur Grid Coordinate</span>
+              <span id="geo-coords" class="mono" style="font-size: 0.72rem; color: var(--gold-light);">-</span>
+            </div>
+            <div id="map-frame"></div>
+          </div>
+
+          <!-- TIME-SERIES LOAD CURVE -->
+          <div class="card-subpanel">
+            <div class="subpanel-head">
+              <span style="color: var(--text-primary);">📈 7-Day Telemetry (337 intervals)</span>
+              <span id="telemetry-status" class="mono" style="font-size: 0.72rem; color: var(--cyan-electric);">Awaiting load...</span>
+            </div>
+            <div class="chart-box">
+              <canvas id="telemetryChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TELEMETRY KPI SUMMARY STRIP -->
+        <div class="kpi-strip">
+          <div class="kpi-tile">
+            <div class="kpi-name">7-Day Net Consumption</div>
+            <div class="kpi-metric mono" id="kpi-delta">-</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-name">Latest Reading (kWh)</div>
+            <div class="kpi-metric mono" id="kpi-latest-kwh">-</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-name">Voltage Dip (Min VR)</div>
+            <div class="kpi-metric mono" id="kpi-min-volt" style="color: var(--cyan-electric);">-</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-name">Voltage Peak (Max VR)</div>
+            <div class="kpi-metric mono" id="kpi-max-volt" style="color: #cbd5e1;">-</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- APPLICATION CONTROLLER SCRIPT -->
+  <script>
+    let currentPage = 1;
+    const pageSize = 15;
+    let totalMeters = 0;
+    let selectedMeterId = null;
+    let leafletMap = null;
+    let currentMarker = null;
+    let telemetryChart = null;
+
+    // Esri World Dark Gray Canvas (100% free, zero watermarks, zero API key required)
+    function initMap() {
+      if (!leafletMap) {
+        leafletMap = L.map('map-frame', { zoomControl: false }).setView([26.9124, 75.7873], 12);
+        L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+        
+        // Base dark canvas layer
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '&copy; Esri &mdash; OpenStreetMap contributors',
+          maxNativeZoom: 16,
+          maxZoom: 18
+        }).addTo(leafletMap);
+
+        // Reference city & street labels layer
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+          maxNativeZoom: 16,
+          maxZoom: 18
+        }).addTo(leafletMap);
+      }
+    }
+
+    async function initConsole() {
+      // 1. Health status check
+      try {
+        const healthRes = await fetch('/health');
+        const health = await healthRes.json();
+        const badge = document.getElementById('service-status');
+        if (health.status === 'healthy') {
+          badge.className = 'pill-indicator';
+          badge.innerHTML = '<span class="pill-pulse"></span> Active · Live Sync';
+        } else {
+          badge.className = 'pill-indicator';
+          badge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+          badge.style.color = '#fbbf24';
+          badge.innerHTML = `<span class="pill-pulse" style="background:#f59e0b; box-shadow:0 0 8px #f59e0b;"></span> Status: ${health.status}`;
+        }
+        document.getElementById('total-meters-count').innerText = health.indexed_meters;
+      } catch (e) {
+        const badge = document.getElementById('service-status');
+        badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        badge.style.color = '#f87171';
+        badge.innerHTML = '<span class="pill-pulse" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span> Offline';
+      }
+
+      // 2. Populate DT selector
+      try {
+        const dtRes = await fetch('/api/v1/transformers');
+        const dts = await dtRes.json();
+        const dtSelect = document.getElementById('filter-dt');
+        dts.sort((a, b) => a.code.localeCompare(b.code)).forEach(dt => {
+          const opt = document.createElement('option');
+          opt.value = dt.code;
+          opt.textContent = `${dt.code} · ${dt.name || 'Transformer'}`;
+          dtSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('Failed to load transformers', e);
+      }
+
+      // 3. Attach filter event listeners
+      document.getElementById('filter-search').addEventListener('input', debounce(() => { currentPage = 1; loadMeters(); }, 250));
+      document.getElementById('filter-status').addEventListener('change', () => { currentPage = 1; loadMeters(); });
+      document.getElementById('filter-make').addEventListener('change', () => { currentPage = 1; loadMeters(); });
+      document.getElementById('filter-dt').addEventListener('change', () => { currentPage = 1; loadMeters(); });
+
+      document.getElementById('btn-prev').addEventListener('click', () => {
+        if (currentPage > 1) { currentPage--; loadMeters(); }
+      });
+      document.getElementById('btn-next').addEventListener('click', () => {
+        currentPage++; loadMeters();
+      });
+
+      // 4. Load initial page
+      loadMeters();
+    }
+
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    async function loadMeters() {
+      const q = document.getElementById('filter-search').value.trim();
+      const status = document.getElementById('filter-status').value;
+      const make = document.getElementById('filter-make').value;
+      const dt = document.getElementById('filter-dt').value;
+
+      let url = `/api/v1/meters?page=${currentPage}&limit=${pageSize}`;
+      if (q) url += `&q=${encodeURIComponent(q)}`;
+      if (status) url += `&status=${encodeURIComponent(status)}`;
+      if (make) url += `&make=${encodeURIComponent(make)}`;
+      if (dt) url += `&dt=${encodeURIComponent(dt)}`;
+
+      const tbody = document.getElementById('meters-table-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-muted);">Querying registry...</td></tr>';
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        totalMeters = data.total;
+
+        document.getElementById('page-summary').innerText = `${data.data.length} of ${data.total} meters`;
+        document.getElementById('page-indicator').innerText = `Page ${data.page} of ${data.total_pages || 1}`;
+        document.getElementById('btn-prev').disabled = data.page <= 1;
+        document.getElementById('btn-next').disabled = data.page >= data.total_pages;
+
+        if (data.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2.5rem; color: var(--text-muted);">No meters matched current filters.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        data.data.forEach((m, idx) => {
+          const tr = document.createElement('tr');
+          if (m.meter_id === selectedMeterId) tr.className = 'active-row';
+
+          let statusClass = 'status-installed';
+          if (m.install_status.toLowerCase() === 'faulty') statusClass = 'status-faulty';
+          if (m.install_status.toLowerCase() === 'decommissioned') statusClass = 'status-decommissioned';
+
+          tr.innerHTML = `
+            <td class="mono" style="font-weight:700; color:var(--gold-light);">${m.meter_id}</td>
+            <td class="mono" style="color:var(--text-secondary);">${m.serial_no}</td>
+            <td>${m.make}</td>
+            <td><span class="status-badge ${statusClass}">${m.install_status}</span></td>
+            <td><span class="mono" style="font-size:0.75rem; color:var(--text-muted);">${m.dt_code}</span></td>
+          `;
+          tr.addEventListener('click', () => inspectMeter(m.meter_id));
+          tbody.appendChild(tr);
+
+          // Select first meter automatically on initial load
+          if (!selectedMeterId && idx === 0) {
+            inspectMeter(m.meter_id);
+          }
+        });
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--crimson); padding: 2rem;">Error: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function inspectMeter(meterId) {
+      selectedMeterId = meterId;
+
+      document.querySelectorAll('#meters-table-body tr').forEach(row => {
+        row.classList.toggle('active-row', row.innerText.includes(meterId));
+      });
+
+      document.getElementById('inspector-placeholder').style.display = 'none';
+      document.getElementById('inspector-content').style.display = 'flex';
+
+      try {
+        const res = await fetch(`/api/v1/meters/${meterId}`);
+        const m = await res.json();
+
+        // Specifications
+        document.getElementById('spec-id').innerText = m.meter_id;
+        document.getElementById('spec-serial').innerText = m.serial_no;
+        document.getElementById('spec-make').innerText = m.make;
+        document.getElementById('spec-phase').innerText = `${m.phase_type}-phase`;
+        document.getElementById('spec-status').innerText = m.install_status;
+        document.getElementById('spec-type').innerText = m.install_type;
+
+        // Topology breadcrumb
+        const h = m.hierarchy || {};
+        document.getElementById('crumb-zone').innerText = h.zone?.name || 'Jaipur Zone';
+        document.getElementById('crumb-circle').innerText = h.circle?.name || (h.circle?.code ? `Circle ${h.circle.code}` : 'Circle');
+        document.getElementById('crumb-division').innerText = h.division?.name || (h.division?.code ? `Div ${h.division.code}` : 'Division');
+        document.getElementById('crumb-feeder').innerText = h.feeder?.name || (h.feeder?.code ? `Feeder ${h.feeder.code}` : 'Feeder');
+        document.getElementById('crumb-dt').innerText = `${m.dt_name || 'DT'} (${m.dt_code})`;
+
+        // Spatial position
+        initMap();
+        const lat = m.geo?.latitude || 26.9124;
+        const lng = m.geo?.longitude || 75.7873;
+        document.getElementById('geo-coords').innerText = `${lat.toFixed(6)}° N, ${lng.toFixed(6)}° E`;
+
+        if (currentMarker) leafletMap.removeLayer(currentMarker);
+        leafletMap.setView([lat, lng], 14, { animate: true });
+        
+        const pinIcon = L.divIcon({
+          className: 'custom-pin',
+          html: '<div class="radar-pin"></div>',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+
+        currentMarker = L.marker([lat, lng], { icon: pinIcon }).addTo(leafletMap);
+        currentMarker.bindPopup(`
+          <div style="font-weight:700; color:#fbbf24; margin-bottom:2px;">Meter ${m.meter_id}</div>
+          <div style="color:#94a3b8; font-size:0.75rem;">Serial: ${m.serial_no} · ${m.make}</div>
+          <div style="color:#e2e8f0; font-size:0.75rem; margin-top:2px;">DT: ${m.dt_name || m.dt_code}</div>
+        `).openPopup();
+        leafletMap.invalidateSize();
+
+        // Telemetry Load
+        loadTelemetry(meterId);
+      } catch (e) {
+        console.error('Failed to load meter details', e);
+      }
+    }
+
+    async function loadTelemetry(meterId) {
+      const statusEl = document.getElementById('telemetry-status');
+      statusEl.innerText = 'Retrieving load curve...';
+
+      try {
+        const res = await fetch(`/api/v1/meters/${meterId}/consumption`);
+        if (!res.ok) {
+          statusEl.innerText = 'Telemetry not available';
+          return;
+        }
+        const data = await res.json();
+        const readings = data.readings || [];
+
+        statusEl.innerText = `${readings.length} data points (UTC)`;
+
+        if (readings.length === 0) {
+          document.getElementById('kpi-delta').innerText = '0 kWh';
+          document.getElementById('kpi-latest-kwh').innerText = '0 kWh';
+          document.getElementById('kpi-min-volt').innerText = '0 V';
+          document.getElementById('kpi-max-volt').innerText = '0 V';
+          return;
+        }
+
+        // Metrics calculations
+        const firstKwh = readings[0].kwh;
+        const lastKwh = readings[readings.length - 1].kwh;
+        const deltaKwh = (lastKwh - firstKwh).toFixed(2);
+        const voltages = readings.map(r => r.volt_r).filter(v => v > 0);
+        const minVolt = voltages.length > 0 ? Math.min(...voltages) : 0;
+        const maxVolt = voltages.length > 0 ? Math.max(...voltages) : 0;
+
+        document.getElementById('kpi-delta').innerText = `+${deltaKwh} kWh`;
+        document.getElementById('kpi-latest-kwh').innerText = `${lastKwh.toFixed(2)} kWh`;
+        document.getElementById('kpi-min-volt').innerText = `${minVolt} V`;
+        document.getElementById('kpi-max-volt').innerText = `${maxVolt} V`;
+
+        // Format chart labels and datasets
+        const labels = readings.map(r => {
+          const d = new Date(r.timestamp);
+          return `${d.getUTCDate()}/${d.getUTCMonth()+1} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+        });
+        const kwhData = readings.map(r => r.kwh);
+        const voltData = readings.map(r => r.volt_r);
+
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        if (telemetryChart) telemetryChart.destroy();
+
+        // Create gradient fill for royal amber load curve
+        const goldGradient = ctx.createLinearGradient(0, 0, 0, 240);
+        goldGradient.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
+        goldGradient.addColorStop(1, 'rgba(245, 158, 11, 0.00)');
+
+        telemetryChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Cumulative Energy (kWh)',
+                data: kwhData,
+                borderColor: '#f59e0b',
+                backgroundColor: goldGradient,
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: '#fbbf24',
+                yAxisID: 'yKwh',
+                tension: 0.15,
+              },
+              {
+                label: 'Voltage VR (V)',
+                data: voltData,
+                borderColor: '#38bdf8',
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: '#38bdf8',
+                yAxisID: 'yVolt',
+                tension: 0.1,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: '#94a3b8',
+                  font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: '600' },
+                  boxWidth: 12,
+                  usePointStyle: true,
+                }
+              },
+              tooltip: {
+                backgroundColor: '#0d1322',
+                borderColor: 'rgba(245, 158, 11, 0.35)',
+                borderWidth: 1,
+                titleColor: '#fbbf24',
+                bodyColor: '#f8fafc',
+                titleFont: { family: "'JetBrains Mono', monospace", size: 12, weight: '700' },
+                bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+                padding: 10,
+                displayColors: true,
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                ticks: {
+                  color: '#64748b',
+                  font: { family: "'JetBrains Mono', monospace", size: 9 },
+                  maxTicksLimit: 7
+                }
+              },
+              yKwh: {
+                type: 'linear',
+                position: 'left',
+                grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                ticks: {
+                  color: '#f59e0b',
+                  font: { family: "'JetBrains Mono', monospace", size: 10 }
+                }
+              },
+              yVolt: {
+                type: 'linear',
+                position: 'right',
+                grid: { display: false },
+                ticks: {
+                  color: '#38bdf8',
+                  font: { family: "'JetBrains Mono', monospace", size: 10 }
+                }
+              }
+            }
+          }
+        });
+
+      } catch (e) {
+        console.error('Failed to load telemetry', e);
+        statusEl.innerText = 'Telemetry query error';
+      }
+    }
+
+    // Initialize on window load
+    window.addEventListener('DOMContentLoaded', initConsole);
+  </script>
+</body>
+</html>
